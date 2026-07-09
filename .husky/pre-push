@@ -1,0 +1,14 @@
+#!/bin/sh
+# Branch naming: type/kebab-description (main exempt; remote rules block direct main pushes anyway)
+branch="$(git rev-parse --abbrev-ref HEAD)"
+case "$branch" in
+  main) ;;
+  feat/*|fix/*|chore/*|docs/*|refactor/*|perf/*|test/*)
+    echo "$branch" | grep -Eq '^[a-z]+/[a-z0-9][a-z0-9-]*$' || {
+      echo "✗ Branch '$branch' must be type/kebab-case (e.g. feat/add-rating)"; exit 1; }
+    ;;
+  *)
+    echo "✗ Branch '$branch' must start with feat/ fix/ chore/ docs/ refactor/ perf/ or test/"
+    exit 1
+    ;;
+esac

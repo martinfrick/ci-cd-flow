@@ -1,0 +1,21 @@
+#!/bin/sh
+# AI-drafted conventional commit message (see CONTEXT.md "Conventional Commit")
+# Fires only for plain `git commit` (no -m/-t/merge/squash). Skip with SKIP_AI=1.
+msg_file="$1"; source="$2"
+
+[ -n "$source" ] && exit 0                      # -m, merge, squash, template → keep as-is
+[ -n "$SKIP_AI" ] && exit 0
+command -v claude >/dev/null 2>&1 || exit 0     # no Claude CLI → silent no-op
+
+diff="$(git diff --cached --unified=3 | head -c 20000)"
+[ -z "$diff" ] && exit 0
+
+draft="$(claude -p "Write a Conventional Commit message for this staged diff.
+Subject: type(scope): imperative, lowercase, <=72 chars. Types: feat|fix|chore|docs|refactor|perf|test.
+Add a short body only if the why isn't obvious. Output the raw message only.
+
+$diff" 2>/dev/null)"
+
+if [ -n "$draft" ]; then
+  { echo "$draft"; echo; cat "$msg_file"; } > "$msg_file.tmp" && mv "$msg_file.tmp" "$msg_file"
+fi

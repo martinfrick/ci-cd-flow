@@ -1,0 +1,9 @@
+#!/bin/sh
+npx lint-staged
+
+# Secret scan on staged changes — blocks credentials before they enter history
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --no-banner
+else
+  echo "⚠ gitleaks not installed (brew install gitleaks) — secret scan skipped, CI will catch it"
+fi
