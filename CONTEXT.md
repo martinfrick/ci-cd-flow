@@ -38,7 +38,7 @@ The manual, approval-gated act of deploying an already-released, already-QA-depl
 
 ### Release artifact
 
-The immutable outputs of one Release, all sharing the Release version and stored in GHCR: three container images (**srv**, **hana-deployer**, **html5-deployer**) plus the **Helm chart** (pushed as an OCI artifact, `Chart.version` = Release version). HDI schema deployment runs as a Helm pre-upgrade job using the hana-deployer image. QA and prod Deployments pull these artifacts from GHCR — never rebuilt from source.
+The immutable outputs of one Release, all sharing the Release version and stored in GHCR: container images (**srv**, **hana-deployer** — an **html5-deployer** joins once the HTML5 Application Repository is set up; until then srv serves the UIs) plus the **Helm chart** (pushed as an OCI artifact, version stamped at `helm package` time = Release version). HDI schema deployment runs as a Helm job using the hana-deployer image. QA and prod Deployments pull these artifacts from GHCR — never rebuilt from source.
 
 ### Highlights
 

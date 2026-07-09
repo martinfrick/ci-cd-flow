@@ -1,0 +1,98 @@
+name: Release Build
+
+# Fires when Release Please publishes a GitHub Release (requires
+# RELEASE_PLEASE_TOKEN — releases created with the default GITHUB_TOKEN
+# cannot trigger workflows). workflow_dispatch is the manual fallback.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build (e.g. v1.1.0)"
+        required: true
+
+permissions:
+  contents: write # upload SBOM assets to the Release
+  packages: write # push images + chart to GHCR
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  build-publish:
+    name: Build once, publish to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        id: version
+        run: |
+          TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.version.outputs.tag }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: buildpacks/github-actions/setup-pack@v5.9.4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: CAP production build
+        run: |
+          npm ci
+          npx cds build --production
+
+      - name: Build and push images (Cloud Native Buildpacks)
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          pack build "$REGISTRY/ci-cd-flow-srv:$VERSION" \
+            --path gen/srv --builder paketobuildpacks/builder-jammy-base \
+            --env BP_NODE_RUN_SCRIPTS="" --publish
+          pack build "$REGISTRY/ci-cd-flow-hana-deployer:$VERSION" \
+            --path gen/db --builder paketobuildpacks/builder-jammy-base \
+            --env BP_NODE_RUN_SCRIPTS="" --publish
+
+      - name: Package and push Helm chart
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          helm package gen/chart --version "$VERSION" --app-version "$VERSION"
+          helm push "ci-cd-flow-$VERSION.tgz" "oci://$REGISTRY/charts"
+
+      # Vulnerability placeholder: warn-only now, flip to blocking by
+      # removing continue-on-error and adding exit-code: 1 (see tasks/todo.md)
+      - name: Trivy scan srv image
+        uses: aquasecurity/trivy-action@0.33.1
+        continue-on-error: true
+        with:
+          image-ref: ${{ env.REGISTRY }}/ci-cd-flow-srv:${{ steps.version.outputs.version }}
+          severity: HIGH,CRITICAL
+          format: table
+
+      - name: Trivy scan hana-deployer image
+        uses: aquasecurity/trivy-action@0.33.1
+        continue-on-error: true
+        with:
+          image-ref: ${{ env.REGISTRY }}/ci-cd-flow-hana-deployer:${{ steps.version.outputs.version }}
+          severity: HIGH,CRITICAL
+          format: table
+
+      - name: Attach SBOMs to the Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          pack sbom download "$REGISTRY/ci-cd-flow-srv:$VERSION" --remote --output-dir sbom/srv
+          pack sbom download "$REGISTRY/ci-cd-flow-hana-deployer:$VERSION" --remote --output-dir sbom/hana-deployer
+          (cd sbom && zip -qr "../sbom-$VERSION.zip" .)
+          gh release upload "${{ steps.version.outputs.tag }}" "sbom-$VERSION.zip" --clobber

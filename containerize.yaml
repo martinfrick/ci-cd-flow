@@ -1,0 +1,20 @@
+_schema-version: "1.0"
+repository: <your-container-registry-server>
+tag: latest
+modules:
+  - name: ci-cd-flow-srv
+    build-parameters:
+      buildpack:
+        type: nodejs
+        builder: builder-jammy-base
+        path: gen/srv
+        env:
+          BP_NODE_RUN_SCRIPTS: ""
+  - name: ci-cd-flow-hana-deployer
+    build-parameters:
+      buildpack:
+        type: nodejs
+        builder: builder-jammy-base
+        path: gen/db
+        env:
+          BP_NODE_RUN_SCRIPTS: ""

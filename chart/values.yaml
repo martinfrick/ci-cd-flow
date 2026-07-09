@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=./values.schema.json
+
+global:
+  domain: e6aa1fa.kyma.ondemand.com
+  imagePullSecret:
+    name: docker-registry
+  image:
+    registry:
+    tag: latest
+srv:
+  bindings:
+    db:
+      serviceInstanceName: hana
+  image:
+    repository: ci-cd-flow-srv
+  resources:
+    limits:
+      ephemeral-storage: 1G
+      memory: 500M
+    requests:
+      ephemeral-storage: 1G
+      cpu: 500m
+      memory: 500M
+  health:
+    liveness:
+      path: /health
+    readiness:
+      path: /health
+hana-deployer:
+  image:
+    repository: ci-cd-flow-hana-deployer
+  bindings:
+    hana:
+      serviceInstanceName: hana
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 1G
+    requests:
+      cpu: 1000m
+      memory: 1G
+hana:
+  serviceOfferingName: hana
+  servicePlanName: hdi-shared
