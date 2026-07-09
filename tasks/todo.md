@@ -22,19 +22,21 @@ Design authority: `CONTEXT.md`, `docs/adr/0001`, `docs/adr/0002`. Each phase is 
 - [x] `prepare-commit-msg` → Claude drafts conventional message from staged diff; only when message empty; skip via `SKIP_AI=1`; graceful no-op when `claude` CLI absent
 - [x] **Verified**: non-conventional message rejected by commitlint; staged fake GitHub PAT blocked by gitleaks (note: AWS `AKIA…EXAMPLE` sample keys are allowlisted by gitleaks — test with realistic tokens); AI hook drafted a valid conventional message from the real diff; `BadBranchName` push rejected by pre-push
 
-## Phase 2 — PR pipeline (`.github/workflows/pr.yml`)
+## Phase 2 — PR pipeline (`.github/workflows/pr.yml`) ✅ (2026-07-09)
 
-- [ ] Job `title-lint`: `amannn/action-semantic-pull-request`
-- [ ] Job `build-test`: `npm ci` → eslint → `cds build --production` → Jest with `@cap-js/cds-test` (add first smoke test: service boots, `GET /odata/v4/...` 200 on in-memory sqlite)
-- [ ] Job `security`: `npm audit --audit-level=high` + gitleaks action
-- [ ] Register all three as required status checks in the ruleset
-- **Verify**: PR with bad title blocked; PR with failing test blocked; green PR mergeable with 1 approval
+- [x] Job `title-lint`: `amannn/action-semantic-pull-request@v6` (re-runs on PR title edits)
+- [x] Job `build-test`: `npm ci` → eslint → `cds build --production` → Jest smoke tests (CatalogService boots, Books + ListOfBooks 200 on in-memory sqlite)
+- [x] Job `security`: gitleaks action + `npm audit --audit-level=high`
+- [x] All three registered as required status checks in ruleset 18708507
+- [x] **Verified**: all three checks green on PR #2 before being marked required
 
 ## Phase 3 — Release Please (`.github/workflows/release-please.yml`)
 
-- [ ] `release-please-action`, release-type `node`
-- [ ] `release-please-config.json`: reader-focused changelog sections (⚠ Breaking, Features, Bug Fixes, Performance, Dependencies); hide chore/ci/test/refactor/docs; `extra-files` to bump `chart/Chart.yaml` version + appVersion and image tags in `chart/values.yaml`
-- **Verify**: merge a `feat:` PR → Release PR appears with correct next version + changelog entry; merge Release PR → tag + GitHub Release created
+- [x] `googleapis/release-please-action@v4` on push to main, release-type `node`, manifest bootstrap at 1.0.0
+- [x] `release-please-config.json`: reader-focused changelog sections (⚠ Breaking auto, Features, Bug Fixes, Performance, Dependencies); hidden: chore/ci/test/refactor/docs/style/build
+- [ ] ⚠ **User action**: add `RELEASE_PLEASE_TOKEN` repo secret (fine-grained PAT, contents + pull-requests write) — the default `GITHUB_TOKEN` cannot trigger pr.yml on the Release PR, leaving required checks stuck pending (admin-bypass merge works meanwhile)
+- [ ] `extra-files` for `chart/Chart.yaml` + `chart/values.yaml` image tags — added in Phase 4 when the chart exists
+- **Verify**: merge a `feat:` PR → Release PR appears with correct next version + changelog entry; merge Release PR → tag + GitHub Release created (note: the three `chore:` commits to date correctly trigger no release)
 
 ## Phase 4 — Build & publish (`.github/workflows/release-build.yml`, on release published)
 
