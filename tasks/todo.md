@@ -40,12 +40,13 @@ Design authority: `CONTEXT.md`, `docs/adr/0001`, `docs/adr/0002`. Each phase is 
 
 ## Phase 4 — Build & publish (`.github/workflows/release-build.yml`, on release published)
 
-- [ ] `cds add helm`-based chart in `chart/` with values-dev/qa/prod.yaml; hana-deployer as pre-upgrade job
-- [ ] `cds build --production` → `pack build` × 3 (srv from `gen/srv`, hana-deployer from `gen/db`, html5-deployer from `app/html5-deployer`; builder-jammy-base, `BP_NODE_RUN_SCRIPTS=""`)
-- [ ] Push images + OCI chart to GHCR tagged with release version (auth: `GITHUB_TOKEN`, `packages: write`)
-- [ ] Trivy scan all images, `continue-on-error: true`, results to job summary (placeholder → blocking later)
-- [ ] Extract buildpack SBOMs, attach to the GitHub Release
-- **Verify**: after a release, GHCR shows 3 images + chart at the version; Release has SBOM assets; Trivy summary present
+- [x] Chart via `cds add kyma` + `cds add hana` in `chart/`; `cds build --production` resolves subcharts into `gen/chart` (web-application srv, service-instance hana, content-deployment hana-deployer job). Env value overrides land in Phase 5.
+- [x] `pack build` × 2 from `gen/srv` + `gen/db` (paketobuildpacks/builder-jammy-base, `BP_NODE_RUN_SCRIPTS=""`) — **html5-deployer deferred**: needs HTML5 Application Repository + destination/launchpad services; srv serves the Fiori apps meanwhile
+- [x] Push images + OCI chart to GHCR tagged with release version (auth: `GITHUB_TOKEN`, `packages: write`); chart version stamped at `helm package` time — no release-please extra-files needed
+- [x] Trivy scan images, `continue-on-error: true` (placeholder → blocking later); buildpack SBOMs zipped and attached to the GitHub Release
+- [x] `workflow_dispatch` fallback with tag input (also covers re-runs if a release build fails)
+- [x] Local verification: `helm package --version 1.1.0-test` stamps correctly; `helm template` renders Deployment/Job/ServiceInstance/Bindings/APIRule/NetworkPolicy/PDB
+- [ ] **Verify in CI (needs first Release)**: GHCR shows both images + chart at the version; Release has SBOM asset; Trivy summary present
 
 ## Phase 5 — Deployments
 
