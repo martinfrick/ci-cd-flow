@@ -1,0 +1,4 @@
+# High-blast-radius paths require owner review (see tasks/todo.md Phase 0)
+/.github/workflows/ @martinfrick
+/chart/             @martinfrick
+/db/                @martinfrick
