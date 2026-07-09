@@ -2,22 +2,25 @@
 
 Design authority: `CONTEXT.md`, `docs/adr/0001`, `docs/adr/0002`. Each phase is independently verifiable — do not start a phase until the previous one's verification passes.
 
-## Phase 0 — Repo foundation
+## Phase 0 — Repo foundation ✅ (2026-07-09)
 
-- [ ] `git init`, initial commit of existing CAP starter
-- [ ] Create GitHub repo, push, set squash merge as the **only** allowed merge method (repo settings)
-- [ ] Default squash commit message = PR title + description
-- [ ] Add `CODEOWNERS` (owners for `.github/workflows/`, `chart/`, `db/`)
-- [ ] Branch protection ruleset on `main`: 1 approval, dismiss stale reviews, block force-push, require status checks (names added in Phase 2)
-- **Verify**: PR from a test branch shows only "Squash and merge"; direct push to `main` rejected
+- [x] `git init`, initial commit of existing CAP starter
+- [x] Create GitHub repo (github.com/martinfrick/ci-cd-flow, **public** — free plan doesn't enforce rulesets on private repos), push, squash-only merge
+- [x] Default squash commit message = PR title + description (`PR_TITLE`/`PR_BODY`)
+- [x] Add `CODEOWNERS` (owners for `.github/workflows/`, `chart/`, `db/`)
+- [x] Branch protection ruleset `main-protection`: 1 approval, dismiss stale reviews, code-owner review, block force-push/deletion, PR-only. Required status checks added in Phase 2.
+  - ⚠ Repo-admin **bypass** enabled for solo development — remove `bypass_actors` from ruleset 18708507 when a second reviewer joins
+- [x] **Verified**: direct push to `main` rejected (GH013, "Changes must be made through a pull request"); repo settings confirm squash-only
 
-## Phase 1 — Local guardrails (Husky)
+> Public-repo bonus: CodeQL and GitHub secret-scanning push protection are now free — Phase 2/6 upgrade CodeQL from placeholder to real.
 
-- [ ] `npm i -D husky @commitlint/cli @commitlint/config-conventional lint-staged eslint @sap/eslint-plugin-cds prettier gitleaks` (gitleaks via binary or brew, documented in README)
-- [ ] `commitlint.config.js` extending config-conventional
-- [ ] Hooks: `commit-msg` → commitlint · `pre-commit` → lint-staged (eslint + prettier on staged) + gitleaks staged scan · `pre-push` → branch-name regex (`^(feat|fix|chore|docs|refactor|perf|test)/[a-z0-9-]+$`)
-- [ ] `prepare-commit-msg` → Claude drafts conventional message from staged diff; only when message empty; skip via `SKIP_AI=1`; graceful no-op when `claude` CLI absent
-- **Verify**: bad commit message rejected; staged fake secret blocked; `git commit` (no `-m`) produces AI draft
+## Phase 1 — Local guardrails (Husky) ✅ (2026-07-09)
+
+- [x] Dev deps installed: husky, commitlint (+config-conventional), lint-staged, eslint via `cds add lint` (@sap/eslint-plugin-cds flat config), prettier; gitleaks via brew (hook warns + skips gracefully if absent)
+- [x] `commitlint.config.js` extending config-conventional
+- [x] Hooks: `commit-msg` → commitlint · `pre-commit` → lint-staged (eslint + prettier on staged) + gitleaks staged scan · `pre-push` → branch-name check (main exempt)
+- [x] `prepare-commit-msg` → Claude drafts conventional message from staged diff; only when message empty; skip via `SKIP_AI=1`; graceful no-op when `claude` CLI absent
+- [x] **Verified**: non-conventional message rejected by commitlint; staged fake GitHub PAT blocked by gitleaks (note: AWS `AKIA…EXAMPLE` sample keys are allowlisted by gitleaks — test with realistic tokens); AI hook drafted a valid conventional message from the real diff; `BadBranchName` push rejected by pre-push
 
 ## Phase 2 — PR pipeline (`.github/workflows/pr.yml`)
 
@@ -56,7 +59,7 @@ Design authority: `CONTEXT.md`, `docs/adr/0001`, `docs/adr/0002`. Each phase is 
 - [ ] Claude Code command/skill for PR creation: draft conventional title + structured description (what/why/testing/breaking) from branch diff, author approves, `gh pr create`
 - [ ] Renovate: conventional commit titles (`fix(deps)`/`chore(deps)`), grouped @sap/cds updates
 - [ ] npm signature/provenance verification step (`npm audit signatures`) in PR pipeline
-- [ ] Documented placeholders in README: CodeQL (needs GHAS on private repos), Trivy flip-to-blocking instructions
+- [ ] Enable CodeQL (free on public repos) + GitHub secret-scanning push protection; document Trivy flip-to-blocking instructions in README
 - **Verify**: Release PR carries reviewable Highlights comment; published Release body starts with Highlights; Renovate PR appears with conventional title
 
 ## Explicitly out of scope (documented, not built)
